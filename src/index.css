@@ -1,0 +1,94 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/bricolage-grotesque/index.css';
+@import '@fontsource-variable/bricolage-grotesque/wdth.css';
+@import '@fontsource-variable/instrument-sans/index.css';
+@import '@fontsource-variable/jetbrains-mono/index.css';
+
+/* Palette: black, bone, silver, signal blue, gold. Blue marks what is live. Gold marks what is verified. */
+@theme {
+  --color-black: #000000;
+  --color-ink: #07080a;
+  --color-bone: #f3f4f6;
+  --color-silver: #b9bfc9;
+  --color-steel: #7c838f;
+  --color-line: #1f2228;
+  --color-blue: #4a7bff;
+  --color-gold: #d1a94f;
+  --font-display: 'Bricolage Grotesque Variable', 'Instrument Sans Variable', system-ui, sans-serif;
+  --font-body: 'Instrument Sans Variable', system-ui, sans-serif;
+  --font-code: 'JetBrains Mono Variable', ui-monospace, monospace;
+}
+
+:root { color-scheme: dark; }
+html { scroll-behavior: smooth; background: #000; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+body {
+  margin: 0;
+  background: #000;
+  color: var(--color-bone);
+  font-family: var(--font-body);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection { background: var(--color-blue); color: #fff; }
+
+:focus-visible {
+  outline: 2px solid var(--color-blue);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.display {
+  font-family: var(--font-display);
+  font-stretch: 80%;
+  font-variation-settings: 'wdth' 80;
+  letter-spacing: -0.035em;
+  line-height: 0.9;
+}
+
+/* Engraved metal: reads as silver stamped into black, no glow */
+.engraved {
+  background: linear-gradient(180deg, #ffffff 0%, #c9ced6 38%, #7a818c 62%, #dfe3e9 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.14)) drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.9));
+}
+
+.hair { border: 1px solid var(--color-line); }
+.hair-t { border-top: 1px solid var(--color-line); }
+.hair-b { border-bottom: 1px solid var(--color-line); }
+.hair-l { border-left: 1px solid var(--color-line); }
+
+.measure { max-width: 62ch; }
+
+/* wireframe to render, per-project screens */
+.screen svg { display: block; width: 100%; height: auto; }
+.screen .wire .shape { fill: none; stroke: var(--color-silver); stroke-opacity: 0.5; stroke-width: 1; stroke-dasharray: 3 3; }
+.screen .wire .only-r { display: none; }
+.screen .rend .shape.f-panel { fill: #0d0f13; stroke: #262a31; }
+.screen .rend .shape.f-blue { fill: var(--color-blue); stroke: none; }
+.screen .rend .shape.f-gold { fill: var(--color-gold); stroke: none; }
+.screen .rend .shape.f-silver { fill: var(--color-silver); stroke: none; }
+.screen .rend .shape.f-line { fill: #3a3f48; stroke: none; }
+.screen .rend .shape.f-stroke-blue { fill: none; stroke: var(--color-blue); stroke-width: 2; stroke-dasharray: none; }
+.screen .rend .shape.f-stroke-silver { fill: none; stroke: var(--color-silver); stroke-width: 1.5; stroke-dasharray: none; }
+.screen .rend text { fill: #cfd4dc; font-family: var(--font-body); font-size: 11px; }
+.screen .rend .t-big { font-size: 22px; font-family: var(--font-display); fill: #fff; }
+
+.resolve { transition: clip-path 900ms cubic-bezier(.65, 0, .2, 1); }
+@media (prefers-reduced-motion: reduce) { .resolve { transition: none; } }
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(74, 123, 255, 0.55); }
+  100% { box-shadow: 0 0 0 8px rgba(74, 123, 255, 0); }
+}
+.live-dot { animation: pulse-ring 2.2s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+
+.skip { position: absolute; left: -999px; top: 8px; z-index: 100; background: #fff; color: #000; padding: 8px 12px; }
+.skip:focus { left: 8px; }
