@@ -90,11 +90,11 @@ export function Method() {
 }
 
 const links = [
-  { label: 'Email', value: 'kyng@example.com', href: 'mailto:kyng@example.com' },
-  { label: 'GitHub', value: 'github.com/kyng-dev', href: 'https://github.com/kyng-dev' },
-  { label: 'LinkedIn', value: 'linkedin.com/in/kyng-dev', href: 'https://linkedin.com/in/kyng-dev' },
-  { label: 'X', value: 'x.com/kyng_dev', href: 'https://x.com/kyng_dev' },
-  { label: 'Book a call', value: 'cal.com/kyng/intro', href: 'https://cal.com/kyng/intro' },
+  { label: 'Email', value: 'lawalhussien@gmail.com', href: 'mailto:lawalhussien@gmail.com' },
+  { label: 'GitHub', value: 'github.com/kyng125', href: 'https://github.com/kyng125' },
+  { label: 'LinkedIn', value: 'linkedin.com/in/husayn-lawal', href: 'https://linkedin.com/in/husayn-lawal' },
+  { label: 'X', value: 'x.com/kyng_lawal', href: 'https://x.com/kyng_lawal' },
+  { label: 'Book a call', value: 'calendly.com/lawalhussien18/intro-call', href: 'https://calendly.com/lawalhussien18/intro-call' },
 ]
 
 export function Contact() {
