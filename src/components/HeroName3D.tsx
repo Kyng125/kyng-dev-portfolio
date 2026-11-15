@@ -6,12 +6,13 @@ import glyphData from '../data/kyngGlyphs.json'
 type Cmd = (string | number)[]
 const TRACK = -0.012 // tracking in em
 const GOLD = 0xd1a94f
+const BLUE = 0x4a7bff
 
 function shapesFor(cmds: Cmd[]) {
   const sp = new THREE.ShapePath()
+  const u = (v: number) => v / glyphData.upm
   for (const c of cmds) {
     const [t, ...n] = c as [string, ...number[]]
-    const u = (v: number) => v / glyphData.upm
     if (t === 'M') sp.moveTo(u(n[0]), u(n[1]))
     else if (t === 'L') sp.lineTo(u(n[0]), u(n[1]))
     else if (t === 'Q') sp.quadraticCurveTo(u(n[0]), u(n[1]), u(n[2]), u(n[3]))
@@ -19,6 +20,8 @@ function shapesFor(cmds: Cmd[]) {
   }
   return sp.toShapes()
 }
+
+interface Rect { l: number; t: number; r: number; b: number }
 
 interface Props {
   onFail: () => void
@@ -42,6 +45,7 @@ export default function HeroName3D({ onFail }: Props) {
     renderer.setClearColor(0x000000, 0)
     renderer.toneMapping = THREE.ACESFilmicToneMapping
     renderer.toneMappingExposure = 0.85
+    renderer.localClippingEnabled = true
 
     const scene = new THREE.Scene()
     const pmrem = new THREE.PMREMGenerator(renderer)
@@ -52,8 +56,10 @@ export default function HeroName3D({ onFail }: Props) {
     const FOV = 28
     const camera = new THREE.PerspectiveCamera(FOV, 1, 10, 8000)
 
-    // Letters: extruded brushed silver, each its own mesh so they can answer the cursor
-    const silver = new THREE.MeshPhysicalMaterial({
+    // The scan plane: solid metal exists only on its left. Everything right of it is still wireframe.
+    const scanPlane = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0)
+
+    const solidBase = {
       color: 0x8a919c,
       metalness: 1,
       roughness: 0.3,
@@ -61,14 +67,28 @@ export default function HeroName3D({ onFail }: Props) {
       anisotropyRotation: 0.25,
       clearcoat: 0.15,
       clearcoatRoughness: 0.4,
-    })
-    const goldMat = new THREE.MeshPhysicalMaterial({ color: GOLD, metalness: 1, roughness: 0.22 })
+      clippingPlanes: [scanPlane],
+      transparent: true,
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1,
+    }
+    const goldMat = new THREE.MeshPhysicalMaterial({ color: GOLD, metalness: 1, roughness: 0.22, clippingPlanes: [scanPlane], polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 })
 
-    const pivot = new THREE.Group() // tilts as one body
+    const pivot = new THREE.Group()
     scene.add(pivot)
 
-    interface Letter { mesh: THREE.Mesh; baseX: number; baseY: number; z: number; rx: number; ry: number; vz: number; vrx: number; vry: number }
+    interface Letter {
+      mesh: THREE.Mesh
+      mat: THREE.MeshPhysicalMaterial
+      wireMat: THREE.LineBasicMaterial
+      baseX: number
+      baseY: number
+      z: number; rx: number; ry: number; vz: number; vrx: number; vry: number
+      yieldV: number
+    }
     const letters: Letter[] = []
+    const wireMats: THREE.LineBasicMaterial[] = []
     let penX = 0
     const depth = 0.16
     glyphData.glyphs.forEach((g) => {
@@ -85,17 +105,25 @@ export default function HeroName3D({ onFail }: Props) {
       const cx = (bb.min.x + bb.max.x) / 2
       const cy = (bb.min.y + bb.max.y) / 2
       geo.translate(-cx, -cy, -depth / 2)
-      const mesh = new THREE.Mesh(geo, silver)
+      const mat = new THREE.MeshPhysicalMaterial(solidBase)
+      const mesh = new THREE.Mesh(geo, mat)
+      // hairline construction lines: the wireframe state, and an engraved edge once rendered
+      const wireMat = new THREE.LineBasicMaterial({ color: 0xc3c8d1, transparent: true, opacity: 0.6 })
+      wireMats.push(wireMat)
+      mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 22), wireMat))
       const baseX = penX + cx
       mesh.position.set(baseX, cy, 0)
       pivot.add(mesh)
-      letters.push({ mesh, baseX, baseY: cy, z: 0, rx: 0, ry: 0, vz: 0, vrx: 0, vry: 0 })
+      letters.push({ mesh, mat, wireMat, baseX, baseY: cy, z: 0, rx: 0, ry: 0, vz: 0, vrx: 0, vry: 0, yieldV: 0 })
       penX += g.adv / glyphData.upm + TRACK
     })
     const textW = penX - TRACK
-    // Verified mark: a small gold diamond where a full stop would sit
     const dSize = 0.075
-    const diamond = new THREE.Mesh(new THREE.BoxGeometry(dSize, dSize, dSize * 0.9), goldMat)
+    const dGeo = new THREE.BoxGeometry(dSize, dSize, dSize * 0.9)
+    const diamond = new THREE.Mesh(dGeo, goldMat)
+    const dWireMat = new THREE.LineBasicMaterial({ color: GOLD, transparent: true, opacity: 0.7 })
+    diamond.add(new THREE.LineSegments(new THREE.EdgesGeometry(dGeo), dWireMat))
+    wireMats.push(dWireMat)
     diamond.rotation.z = Math.PI / 4
     diamond.position.set(textW + 0.07, dSize * 0.72, 0)
     pivot.add(diamond)
@@ -103,11 +131,14 @@ export default function HeroName3D({ onFail }: Props) {
     const asc = 0.66
     const desc = 0.22
     const centerEm = { x: fullW / 2, y: (asc - desc) / 2 }
-    pivot.children.forEach((c) => c.position.x -= centerEm.x) // center the word on the pivot
-    pivot.children.forEach((c) => c.position.y -= centerEm.y)
+    pivot.children.forEach((c) => { c.position.x -= centerEm.x; c.position.y -= centerEm.y })
     letters.forEach((l) => { l.baseX -= centerEm.x; l.baseY -= centerEm.y })
 
-    // Lights: a travelling key that the cursor drives, a cool rim for the edges
+    // scan line: a thin blue edge travelling across the word while it resolves
+    const scanLineMat = new THREE.MeshBasicMaterial({ color: BLUE, transparent: true, opacity: 0, depthWrite: false })
+    const scanLine = new THREE.Mesh(new THREE.PlaneGeometry(2, 1), scanLineMat)
+    scene.add(scanLine)
+
     const key = new THREE.PointLight(0xffffff, 0, 0, 0)
     scene.add(key)
     const rim = new THREE.DirectionalLight(0x5a86ff, 0.55)
@@ -117,8 +148,22 @@ export default function HeroName3D({ onFail }: Props) {
     fill.position.set(0.4, 1, 1)
     scene.add(fill)
 
-    // layout in pixels: 1 world unit = 1 css px at z = 0
     let W = 1, H = 1, em = 100
+    let baseY = 0
+    let nameW = 100
+    let rects: Rect[] = []
+    let yieldEls: HTMLElement[] = []
+    const host = canvas.closest('header') as HTMLElement | null
+
+    const measure = () => {
+      const cr = canvas.getBoundingClientRect()
+      yieldEls = host ? Array.from(host.querySelectorAll<HTMLElement>('[data-yield]')) : []
+      rects = yieldEls.map((el) => {
+        const r = el.getBoundingClientRect()
+        return { l: r.left - cr.left, t: r.top - cr.top, r: r.right - cr.left, b: r.bottom - cr.top }
+      })
+    }
+
     const layout = () => {
       W = canvas.clientWidth
       H = canvas.clientHeight
@@ -131,72 +176,128 @@ export default function HeroName3D({ onFail }: Props) {
       camera.updateProjectionMatrix()
       const padLeft = Math.max(24, (W - 1240) / 2 + 40)
       const maxByH = 0.86 * H
-      const nameW = Math.min(W - padLeft - 24, 1000, maxByH)
+      nameW = Math.min(W - padLeft - 24, 1000, maxByH)
       em = nameW / fullW
       pivot.scale.setScalar(em)
       const nameH = (asc + desc) * em
       const cx = padLeft + nameW / 2
       const cy = Math.max(104 + nameH / 2, H * 0.3)
-      pivot.position.set(cx - W / 2, H / 2 - cy, 0)
-      key.distance = 0
-      key.intensity = 0
+      pivot.position.x = cx - W / 2
+      baseY = H / 2 - cy
+      pivot.position.y = baseY
+      scanLine.scale.set(2, nameH * 1.5, 1)
+      measure()
     }
 
     // pointer state
-    const ptr = { x: 0, y: 0, nx: 0, ny: 0, active: false, last: -1e9 }
+    const ptr = { x: 0, y: 0, nx: 0, ny: 0, last: -1e9 }
     const onMove = (e: PointerEvent) => {
       const r = canvas.getBoundingClientRect()
       ptr.x = e.clientX - r.left
       ptr.y = e.clientY - r.top
       ptr.nx = Math.max(-1, Math.min(1, (ptr.x / r.width) * 2 - 1))
       ptr.ny = Math.max(-1, Math.min(1, (ptr.y / r.height) * 2 - 1))
-      ptr.active = ptr.y >= 0 && ptr.y <= r.height
       ptr.last = performance.now()
     }
     const onLeave = () => { ptr.last = -1e9 }
+
+    // scan state: 0 = fully wireframe, 1 = fully rendered
+    const SCAN_MS = 2600
+    let scanStart = performance.now() + 150
+    let scanOut = false // when true the scan runs back to wireframe, then forward again
+    const onClick = (e: MouseEvent) => {
+      if ((e.target as HTMLElement).closest('a,button')) return
+      const r = canvas.getBoundingClientRect()
+      const x = e.clientX - r.left, y = e.clientY - r.top
+      const l = W / 2 + pivot.position.x - nameW / 2, rr = l + nameW
+      const t = H / 2 - pivot.position.y - 0.5 * (asc + desc) * em, b = t + (asc + desc) * em
+      if (x >= l && x <= rr && y >= t && y <= b) { scanOut = true; scanStart = performance.now() }
+    }
     if (!reduced) {
       window.addEventListener('pointermove', onMove, { passive: true })
       document.addEventListener('pointerleave', onLeave)
+      window.addEventListener('click', onClick)
     }
 
     const tilt = { x: 0, y: 0 }
     const lightPos = new THREE.Vector3()
     const lightTarget = new THREE.Vector3()
     const ease = (x: number) => 1 - Math.pow(1 - x, 4)
+    const easeIO = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2)
     let t0 = performance.now()
     let raf = 0
     let visible = true
+    const box = new THREE.Box3()
+    const corner = new THREE.Vector3()
+    const covered = new WeakMap<HTMLElement, boolean>()
 
     const idleLight = (t: number, out: THREE.Vector3) => {
-      // one slow pass across the word every ~14s so the metal keeps catching light
       const s = (Math.sin(t * 0.00045) + 1) / 2
       out.set((s - 0.5) * W * 0.55 + pivot.position.x, pivot.position.y + em * 0.25, em * 1.1)
     }
 
-    const draw = (now: number, dt: number) => {
+    const screenRect = (mesh: THREE.Object3D): Rect => {
+      box.setFromObject(mesh)
+      let l = Infinity, t = Infinity, r = -Infinity, b = -Infinity
+      for (let i = 0; i < 8; i++) {
+        corner.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).project(camera)
+        const x = (corner.x * 0.5 + 0.5) * W
+        const y = (-corner.y * 0.5 + 0.5) * H
+        l = Math.min(l, x); r = Math.max(r, x); t = Math.min(t, y); b = Math.max(b, y)
+      }
+      // shrink a little: glyph boxes are generous, glyphs are not rectangles
+      const sx = (r - l) * 0.08, sy = (b - t) * 0.08
+      return { l: l + sx, r: r - sx, t: t + sy, b: b - sy }
+    }
+    const overlaps = (a: Rect, b: Rect, pad = 6) => a.l < b.r + pad && a.r > b.l - pad && a.t < b.b + pad && a.b > b.t - pad
+
+    const draw = (now: number) => {
       const t = now - t0
       const intro = reduced ? 1 : Math.min(1, t / 2600)
 
-      // light follows the cursor, otherwise drifts
+      // wireframe -> render scan
+      let scan = 1
+      if (!reduced) {
+        const p = Math.min(1, Math.max(0, (now - scanStart) / SCAN_MS))
+        if (!scanOut) scan = easeIO(p)
+        else {
+          // run back to wireframe in the first third, then resolve again
+          const q = Math.min(1, (now - scanStart) / (SCAN_MS * 1.2))
+          scan = q < 0.35 ? 1 - easeIO(q / 0.35) : easeIO((q - 0.35) / 0.65)
+          if (q >= 1) scanOut = false
+        }
+      }
+      const half = nameW / 2 + 40
+      const scanX = pivot.position.x - half + scan * 2 * half
+      scanPlane.constant = scan >= 1 ? 1e5 : scanX
+      const scanning = scan > 0.001 && scan < 0.999
+      scanLine.position.set(scanX, pivot.position.y, 4)
+      scanLineMat.opacity = scanning ? 0.85 * Math.sin(Math.PI * scan) : 0
+
+      // light: follows the cursor, otherwise drifts
       const live = now - ptr.last < 2500 && !reduced
       if (live) lightTarget.set(ptr.x - W / 2, H / 2 - ptr.y, em * 0.9)
       else if (reduced) lightTarget.set(pivot.position.x - em * 0.5, pivot.position.y + em * 0.3, em * 1.1)
       else idleLight(now, lightTarget)
       lightPos.lerp(lightTarget, live ? 0.2 : 0.04)
       key.position.copy(lightPos)
-      key.intensity = (live ? 2.4 : 1.3) * Math.min(1, intro * 1.5)
+      key.intensity = (live ? 2.4 : 1.3) * Math.min(1, intro * 1.5) * (0.35 + 0.65 * scan)
       key.distance = 0
       key.decay = 0
 
-      // body tilt: toward the cursor, clearly visible
+      // scroll: the word lags behind the page, so it slides behind the text below it
+      const sy = reduced ? 0 : Math.min(window.scrollY, H)
+      pivot.position.y = baseY - sy * 0.38
+
+      // body tilt toward the cursor, plus a little scroll-driven pitch
       const tx = live ? -ptr.ny * 0.3 : 0
       const ty = live ? ptr.nx * 0.5 : 0
       tilt.x += (tx - tilt.x) * 0.07
       tilt.y += (ty - tilt.y) * 0.07
-      pivot.rotation.x = tilt.x
+      pivot.rotation.x = tilt.x + (sy / H) * 0.45
       pivot.rotation.y = tilt.y
 
-      // per-letter response: letters near the cursor rise toward it and lean away
+      // per-letter response
       const px = (ptr.x - W / 2 - pivot.position.x) / em
       const py = (H / 2 - ptr.y - pivot.position.y) / em
       letters.forEach((l, i) => {
@@ -208,7 +309,6 @@ export default function HeroName3D({ onFail }: Props) {
         const targetZ = infl * 0.2
         const targetRy = -dx * infl * 0.9
         const targetRx = dy * infl * 0.7
-        // damped spring
         l.vz += (targetZ - l.z) * 0.12; l.vz *= 0.74; l.z += l.vz
         l.vry += (targetRy - l.ry) * 0.12; l.vry *= 0.74; l.ry += l.vry
         l.vrx += (targetRx - l.rx) * 0.12; l.vrx *= 0.74; l.rx += l.vrx
@@ -217,10 +317,28 @@ export default function HeroName3D({ onFail }: Props) {
         l.mesh.rotation.x = l.rx + (1 - e) * 0.35
         l.mesh.scale.setScalar(0.85 + 0.15 * e)
       })
-      // the diamond tracks the light slightly
       diamond.rotation.y = tilt.y * 1.5 + Math.sin(now * 0.0006) * 0.12
       diamond.rotation.x = tilt.x * 1.5
-      void dt
+
+      // readability: where a letter sits behind text, it yields to its wireframe and the text brightens
+      pivot.updateMatrixWorld(true)
+      const hits = new Map<HTMLElement, boolean>()
+      letters.forEach((l) => {
+        const lr = screenRect(l.mesh)
+        let over = false
+        rects.forEach((r, k) => {
+          if (overlaps(lr, r)) { over = true; if (l.yieldV > 0.15) hits.set(yieldEls[k], true) }
+        })
+        l.yieldV += ((over ? 1 : 0) - l.yieldV) * 0.12
+        l.mat.opacity = 1 - 0.94 * l.yieldV
+        l.wireMat.opacity = 0.42 + 0.4 * l.yieldV + (scanning ? 0.18 : 0)
+      })
+      wireMats[wireMats.length - 1].opacity = 0.7
+      yieldEls.forEach((el) => {
+        const v = hits.get(el) === true
+        if (covered.get(el) !== v) { covered.set(el, v); el.dataset.covered = v ? 'true' : 'false' }
+      })
+
       renderer.render(scene, camera)
     }
 
@@ -228,20 +346,21 @@ export default function HeroName3D({ onFail }: Props) {
     const loop = (now: number) => {
       raf = requestAnimationFrame(loop)
       if (!visible || document.hidden) { last = now; return }
-      draw(now, now - last)
+      draw(now)
       last = now
     }
+    void last
 
     const ro = new ResizeObserver(() => {
       layout()
-      if (reduced) draw(performance.now() + 4000, 16)
+      if (reduced) draw(performance.now() + 4000)
     })
     ro.observe(canvas)
     layout()
+    document.fonts?.ready.then(() => { measure(); if (reduced) draw(performance.now() + 4000) })
     t0 = performance.now()
     if (reduced) {
-      // a single considered frame, no loop and no cursor response
-      draw(performance.now() + 4000, 16)
+      for (let i = 0; i < 40; i++) draw(performance.now() + 4000) // settle the yield blending
     } else {
       raf = requestAnimationFrame(loop)
     }
@@ -254,9 +373,10 @@ export default function HeroName3D({ onFail }: Props) {
       io.disconnect()
       window.removeEventListener('pointermove', onMove)
       document.removeEventListener('pointerleave', onLeave)
+      window.removeEventListener('click', onClick)
       scene.traverse((o) => (o as THREE.Mesh).geometry?.dispose?.())
-      silver.dispose()
-      goldMat.dispose()
+      letters.forEach((l) => { l.mat.dispose(); l.wireMat.dispose() })
+      goldMat.dispose(); dWireMat.dispose(); scanLineMat.dispose()
       envTex.dispose()
       pmrem.dispose()
       renderer.dispose()

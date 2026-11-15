@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import RailDiamond from './RailDiamond'
 
 const items = [
   { id: 'top', label: 'Kyng' },
@@ -24,6 +25,7 @@ export default function Rail() {
 
   return (
     <>
+      <RailDiamond active={active} />
       {/* wide screens: a vertical scale on the left edge, the active section is the lit tick */}
       <nav aria-label="Sections" className="fixed left-0 top-0 z-40 hidden h-screen w-16 flex-col items-center justify-center hair-l border-0 border-r border-line bg-black lg:flex">
         <ul className="flex flex-col gap-7">
@@ -34,7 +36,7 @@ export default function Rail() {
                 aria-current={active === i.id ? 'true' : undefined}
                 className="group flex flex-col items-center gap-2 text-xs text-steel transition-colors aria-[current=true]:text-bone hover:text-bone"
               >
-                <span className={`block w-px transition-all ${active === i.id ? 'h-8 bg-blue' : 'h-4 bg-steel group-hover:h-6'}`} />
+                <span data-tick={i.id} className={`block w-px transition-all ${active === i.id ? 'h-8 bg-gold/60' : 'h-4 bg-steel group-hover:h-6'}`} />
                 <span className="[writing-mode:vertical-rl] rotate-180">{i.label}</span>
               </a>
             </li>

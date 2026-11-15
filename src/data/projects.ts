@@ -69,7 +69,7 @@ export const projects: CaseFile[] = [
       { text: '125 reports from the device emulator were received and shown as level, alert and trend.', proof: 'verified' },
       { text: 'Firmware is written, tested on a PC and compiled for the real chip, but has not run on a physical board.', proof: 'not-verified' },
     ],
-    status: { state: 'live', label: 'AquaSense', note: 'Live with emulator traffic. Hardware not yet tested.' },
+    status: { state: 'live', label: 'AquaSense', note: '125 emulator reports in. Hardware not yet tested.' },
     github: {
       repo: 'Kyng125/aquasense',
       url: 'https://github.com/Kyng125/aquasense',

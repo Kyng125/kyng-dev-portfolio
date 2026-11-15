@@ -1,3 +1,6 @@
+import { useRef } from 'react'
+import { motion, useMotionValueEvent, useReducedMotion, useScroll } from 'framer-motion'
+import { useState } from 'react'
 import { others } from '../data/projects'
 
 export function Also() {
@@ -41,6 +44,30 @@ const states = [
   { name: 'Unknown', body: 'Not enough evidence to say.', mark: <span className="h-3 w-3 border border-line" /> },
 ]
 
+// The legend walks down the five evidence states as the page scrolls through this section.
+function EvidenceStates({ sectionRef }: { sectionRef: React.RefObject<HTMLElement | null> }) {
+  const reduced = useReducedMotion()
+  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ['start 60%', 'end 70%'] })
+  const [idx, setIdx] = useState(0)
+  useMotionValueEvent(scrollYProgress, 'change', (v) => setIdx(Math.max(0, Math.min(states.length - 1, Math.floor(v * states.length)))))
+  return (
+    <ul className="mt-3" aria-label="Evidence states">
+      {states.map((s, i) => {
+        const on = !reduced && i === idx
+        return (
+          <li key={s.name} className="hair-t relative flex items-start gap-3 py-3">
+            {on && <motion.span layoutId="state-bar" className="absolute inset-y-0 left-0 w-px bg-gold" transition={{ type: 'spring', stiffness: 260, damping: 30 }} />}
+            <span className={`mt-1.5 flex w-3 justify-center transition-transform duration-300 ${on ? 'scale-125' : ''}`}>{s.mark}</span>
+            <p className={`transition-opacity duration-300 ${reduced || on ? 'opacity-100' : 'opacity-60'}`}>
+              <span className="font-medium">{s.name}.</span> <span className="text-silver">{s.body}</span>
+            </p>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 const principles = [
   { t: 'Evidence before claims', d: 'Tested, verified and working are words I use only when I can point at the output that earned them.' },
   { t: 'Assumptions wear a label', d: 'When a detail is missing I state my assumption and record it. Repetition never turns it into a requirement.' },
@@ -51,8 +78,9 @@ const principles = [
 ]
 
 export function Method() {
+  const sectionRef = useRef<HTMLElement>(null)
   return (
-    <section id="method" className="hair-t">
+    <section id="method" ref={sectionRef} className="hair-t">
       <div className="mx-auto max-w-[1240px] px-6 py-24 lg:px-10">
         <div className="grid gap-12 lg:grid-cols-[1fr_1.2fr] lg:gap-20">
           <div className="lg:sticky lg:top-10 lg:h-fit">
@@ -61,14 +89,7 @@ export function Method() {
               Every project here ran under a personal engineering system I call WEB-OS. It is the reason each case file can say what was checked and what was not.
             </p>
             <h3 className="mt-10 font-display text-xl font-semibold">How I label what I know</h3>
-            <ul className="mt-3">
-              {states.map((s) => (
-                <li key={s.name} className="hair-t flex items-start gap-3 py-3">
-                  <span className="mt-1.5 flex w-3 justify-center">{s.mark}</span>
-                  <p><span className="font-medium">{s.name}.</span> <span className="text-silver">{s.body}</span></p>
-                </li>
-              ))}
-            </ul>
+            <EvidenceStates sectionRef={sectionRef} />
           </div>
           <div>
             <ul>

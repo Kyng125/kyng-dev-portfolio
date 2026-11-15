@@ -7,11 +7,11 @@ function Aqua() {
     <>
       <rect className="shape f-panel" x="16" y="16" width="136" height="268" rx="6" />
       <rect className="shape f-panel" x="40" y="44" width="88" height="190" rx="4" />
-      <rect className="shape f-blue" x="41" y="120" width="86" height="113" rx="3" />
+      <rect className="shape f-blue aq-level" x="41" y="120" width="86" height="113" rx="3" />
       <path className="shape f-stroke-silver" d="M41 120 q 21 -8 43 0 t 43 0" />
       <text className="only-r t-big" x="40" y="262">62%</text>
       <rect className="shape f-panel" x="168" y="16" width="296" height="130" rx="6" />
-      <polyline className="shape f-stroke-blue" fill="none" points="184,120 220,112 256,116 292,92 328,84 364,70 400,58 448,44" />
+      <polyline className="shape f-stroke-blue aq-trend" fill="none" points="184,120 220,112 256,116 292,92 328,84 364,70 400,58 448,44" />
       <rect className="shape f-line" x="184" y="30" width="80" height="6" rx="3" />
       <rect className="shape f-panel" x="168" y="158" width="140" height="58" rx="6" />
       <rect className="shape f-gold" x="182" y="172" width="8" height="8" rx="4" />

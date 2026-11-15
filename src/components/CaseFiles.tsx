@@ -24,10 +24,10 @@ function File({ p }: { p: CaseFile }) {
       <p className="measure mt-3 text-silver">{p.problem}</p>
 
       <h4 className="mt-12 font-display text-2xl tracking-tight">How it fits together</h4>
-      <ol className="mt-5 grid gap-0 sm:grid-cols-4">
+      <ol className="pipe mt-5 grid gap-0 sm:grid-cols-4">
         {p.stages.map((s, i) => (
           <li key={s.name} className={`relative py-4 sm:px-4 sm:first:pl-0 ${i > 0 ? 'hair-t sm:border-l sm:border-t-0 sm:border-line' : 'hair-t sm:border-t-0'} sm:hair-t`}>
-            <span className="absolute -top-[3px] left-0 h-[5px] w-[5px] bg-blue sm:left-4 sm:first:left-0" aria-hidden="true" style={{ left: i === 0 ? 0 : undefined }} />
+            <span className="pipe-dot absolute -top-[3px] left-0 h-[5px] w-[5px] bg-blue sm:left-4 sm:first:left-0" aria-hidden="true" style={{ left: i === 0 ? 0 : undefined, ["--i" as string]: i }} />
             <p className="font-display text-lg font-semibold">{s.name}</p>
             <p className="mt-1 text-sm text-silver">{s.detail}</p>
           </li>
@@ -40,9 +40,7 @@ function File({ p }: { p: CaseFile }) {
           <Suspense fallback={<div className="h-[380px] hair" />}>
             <ArchDiagram3D />
           </Suspense>
-          <p className="mt-3 text-sm text-steel">
-            Five devices, one lab node. Gold marks two edits that collided. The faint sphere is a phone that is offline and queuing changes until it reconnects.
-          </p>
+          
         </div>
       )}
 
