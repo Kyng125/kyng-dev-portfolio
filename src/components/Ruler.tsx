@@ -26,7 +26,8 @@ export default function Ruler() {
 
     const size = () => {
       dpr = Math.min(window.devicePixelRatio || 1, 2)
-      W = window.innerWidth
+      // clientWidth excludes the scrollbar, so the right edge is never hidden under it
+      W = document.documentElement.clientWidth
       H = window.innerHeight
       canvas.width = W * dpr
       canvas.height = H * dpr
@@ -91,17 +92,28 @@ export default function Ruler() {
     }
     const onScroll = () => kick()
     const onResize = () => { size(); draw() }
+    // coming back to the tab: the browser may have changed size/zoom and dropped pointer events, so resync from scratch
+    const resync = () => { if (document.hidden) return; cur.x = cur.y = cur.sx = cur.sy = -999; running = false; cancelAnimationFrame(raf); size(); draw() }
+    const onLeave = () => { cur.x = cur.y = -999; kick() }
 
     size()
     draw()
     if (!reduced) window.addEventListener('pointermove', onMove, { passive: true })
     window.addEventListener('scroll', reduced ? draw : onScroll, { passive: true })
     window.addEventListener('resize', onResize)
+    document.addEventListener('visibilitychange', resync)
+    window.addEventListener('focus', resync)
+    window.addEventListener('pageshow', resync)
+    document.documentElement.addEventListener('pointerleave', onLeave)
     return () => {
       cancelAnimationFrame(raf)
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('scroll', reduced ? draw : onScroll)
       window.removeEventListener('resize', onResize)
+      document.removeEventListener('visibilitychange', resync)
+      window.removeEventListener('focus', resync)
+      window.removeEventListener('pageshow', resync)
+      document.documentElement.removeEventListener('pointerleave', onLeave)
     }
   }, [wide])
 

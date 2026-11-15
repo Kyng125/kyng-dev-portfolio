@@ -37,8 +37,8 @@ function Note({ text }: { text: string }) {
   if (!m) return <p className="text-xs text-silver/80 sm:text-sm">{text}</p>
   return (
     <p ref={ref} className="text-xs text-silver/80 sm:text-sm">
-      {m[1]}<span className="tabular-nums text-bone">{n}</span>{m[3]}
-      <span aria-hidden="true" className={`ml-1.5 inline-block h-1.5 w-1.5 rotate-45 bg-gold align-middle transition-all duration-500 ${stamped ? 'scale-100 opacity-100' : 'scale-[2.2] opacity-0'}`} />
+      {m[1]}<span className="tabular-nums text-bone">{n}</span>      <span aria-hidden="true" className={`mx-1 inline-block h-1.5 w-1.5 rotate-45 bg-gold align-middle transition-all duration-500 ${stamped ? 'scale-100 opacity-100' : 'scale-[2.2] opacity-0'}`} />{m[3]}
+
     </p>
   )
 }

@@ -151,18 +151,26 @@ export default function HeroName3D({ onFail }: Props) {
     let W = 1, H = 1, em = 100
     let baseY = 0
     let nameW = 100
-    let rects: Rect[] = []
+    let rects: { r: Rect; k: number }[] = []
     let yieldEls: HTMLElement[] = []
     const host = canvas.closest('header') as HTMLElement | null
 
+    // Text is measured line by line (not as one big box), so only letters that really sit behind a line of text yield.
     const measure = () => {
       const cr = canvas.getBoundingClientRect()
       yieldEls = host ? Array.from(host.querySelectorAll<HTMLElement>('[data-yield]')) : []
-      rects = yieldEls.map((el) => {
-        const r = el.getBoundingClientRect()
-        return { l: r.left - cr.left, t: r.top - cr.top, r: r.right - cr.left, b: r.bottom - cr.top }
+      rects = []
+      const range = document.createRange()
+      yieldEls.forEach((el, k) => {
+        range.selectNodeContents(el)
+        const list = Array.from(range.getClientRects()).filter((r) => r.width > 4 && r.height > 4)
+        const src = list.length ? list : [el.getBoundingClientRect()]
+        src.forEach((r) => rects.push({ k, r: { l: r.left - cr.left, t: r.top - cr.top, r: r.right - cr.left, b: r.bottom - cr.top } }))
       })
     }
+
+    const METAL = new THREE.Color(0x8a919c)
+    const DEEP = new THREE.Color(0x23262c)
 
     const layout = () => {
       W = canvas.clientWidth
@@ -176,7 +184,12 @@ export default function HeroName3D({ onFail }: Props) {
       camera.updateProjectionMatrix()
       const padLeft = Math.max(24, (W - 1240) / 2 + 40)
       const maxByH = 0.86 * H
-      nameW = Math.min(W - padLeft - 24, 1000, maxByH)
+      measure()
+      // on short screens, shrink the word so it ends above the first line of text instead of sitting behind it
+      const textTop = rects.length ? Math.min(...rects.map((x) => x.r.t)) : H
+      const room = textTop - 84 - 18
+      const maxByRoom = room > 140 ? (room / (asc + desc)) * fullW : Infinity
+      nameW = Math.min(W - padLeft - 24, 1000, maxByH, maxByRoom)
       em = nameW / fullW
       pivot.scale.setScalar(em)
       const nameH = (asc + desc) * em
@@ -326,12 +339,14 @@ export default function HeroName3D({ onFail }: Props) {
       letters.forEach((l) => {
         const lr = screenRect(l.mesh)
         let over = false
-        rects.forEach((r, k) => {
-          if (overlaps(lr, r)) { over = true; if (l.yieldV > 0.15) hits.set(yieldEls[k], true) }
+        rects.forEach(({ r, k }) => {
+          if (overlaps(lr, r, 2)) { over = true; if (l.yieldV > 0.15) hits.set(yieldEls[k], true) }
         })
         l.yieldV += ((over ? 1 : 0) - l.yieldV) * 0.12
-        l.mat.opacity = 1 - 0.94 * l.yieldV
-        l.wireMat.opacity = 0.42 + 0.4 * l.yieldV + (scanning ? 0.18 : 0)
+        // never see-through: the letter stays at least half solid and only deepens in tone behind text
+        l.mat.opacity = 1 - 0.4 * l.yieldV
+        l.mat.color.copy(METAL).lerp(DEEP, 0.55 * l.yieldV)
+        l.wireMat.opacity = 0.42 + 0.3 * l.yieldV + (scanning ? 0.18 : 0)
       })
       wireMats[wireMats.length - 1].opacity = 0.7
       yieldEls.forEach((el) => {
@@ -366,9 +381,19 @@ export default function HeroName3D({ onFail }: Props) {
     }
     const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting })
     io.observe(canvas)
+    let lastTop = -1
+    const remeasure = setInterval(() => {
+      measure()
+      const top = rects.length ? Math.min(...rects.map((x) => x.r.t)) : -1
+      if (Math.abs(top - lastTop) > 4) { lastTop = top; layout() }
+    }, 500)
+    const onVis = () => { if (!document.hidden) { layout(); measure() } }
+    document.addEventListener('visibilitychange', onVis)
 
     return () => {
       cancelAnimationFrame(raf)
+      clearInterval(remeasure)
+      document.removeEventListener('visibilitychange', onVis)
       ro.disconnect()
       io.disconnect()
       window.removeEventListener('pointermove', onMove)

@@ -51,14 +51,14 @@ function EvidenceStates({ sectionRef }: { sectionRef: React.RefObject<HTMLElemen
   const [idx, setIdx] = useState(0)
   useMotionValueEvent(scrollYProgress, 'change', (v) => setIdx(Math.max(0, Math.min(states.length - 1, Math.floor(v * states.length)))))
   return (
-    <ul className="mt-3" aria-label="Evidence states">
+    <ul className="hair-b mt-4" aria-label="Evidence states">
       {states.map((s, i) => {
         const on = !reduced && i === idx
         return (
-          <li key={s.name} className="hair-t relative flex items-start gap-3 py-3">
-            {on && <motion.span layoutId="state-bar" className="absolute inset-y-0 left-0 w-px bg-gold" transition={{ type: 'spring', stiffness: 260, damping: 30 }} />}
-            <span className={`mt-1.5 flex w-3 justify-center transition-transform duration-300 ${on ? 'scale-125' : ''}`}>{s.mark}</span>
-            <p className={`transition-opacity duration-300 ${reduced || on ? 'opacity-100' : 'opacity-60'}`}>
+          <li key={s.name} className="hair-t relative flex items-start gap-4 py-4">
+            {on && <motion.span layoutId="state-bar" className="absolute -left-3 inset-y-0 w-px bg-gold" transition={{ type: 'spring', stiffness: 260, damping: 30 }} />}
+            <span className="flex h-[1.65rem] w-3 shrink-0 items-center justify-center">{s.mark}</span>
+            <p className={`leading-[1.65rem] transition-opacity duration-300 ${reduced || on ? 'opacity-100' : 'opacity-60'}`}>
               <span className="font-medium">{s.name}.</span> <span className="text-silver">{s.body}</span>
             </p>
           </li>

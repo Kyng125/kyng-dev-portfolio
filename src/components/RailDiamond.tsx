@@ -15,8 +15,9 @@ export default function RailDiamond({ active }: { active: string }) {
     }
     place()
     window.addEventListener('resize', place)
+    document.addEventListener('visibilitychange', place)
     document.fonts?.ready.then(place)
-    return () => window.removeEventListener('resize', place)
+    return () => { window.removeEventListener('resize', place); document.removeEventListener('visibilitychange', place) }
   }, [active])
 
   useEffect(() => {
